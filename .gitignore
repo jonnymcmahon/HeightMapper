@@ -4,3 +4,5 @@
 #all png and obj files removed not to be committed as files can be quite large
 *.png
 *.obj
+
+/__pycache__/*
