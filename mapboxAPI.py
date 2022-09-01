@@ -27,11 +27,14 @@ class Data:
             im = self.seaTile()
         else:
             im = Image.open(BytesIO(image.content))
+
         return(im)
 
 
     def seaTile(self):
+
         seaTile = Image.new('RGB', ((self.tileSize), (self.tileSize)), (1,134,160))
+
         return seaTile
 
 
@@ -43,7 +46,7 @@ class Data:
         C = 40075016.686 
 
         avgLat = (self.TLLat + self.BLLat) / 2
-        self.pxDist = (C * math.cos(math.radians(51.33)) / (2**self.zoom)) / self.tileSize
+        self.pxDist = (C * math.cos(math.radians(avgLat)) / (2**self.zoom)) / self.tileSize
 
         fullImage = Image.new('RGB', ((self.tilesWidth*self.tileSize), (self.tilesHeight*self.tileSize)), (250,250,250))
 
@@ -65,12 +68,15 @@ class Data:
         if TLLat <= BLLat:
             raise ValueError('Error: Top left latitude must be north of bottom left latitude')
 
-        if TLLon <= BLLon:
+        if TLLon >= BLLon:
             raise ValueError('Error: Top left longitude must be west of bottom left longitude')
         
         #checking if zoom is int and then if it is in accepted range (>= 0 and <= 20) as data over zoom level of 20 is useless for purpose of script
 
         if isinstance(zoom, int) == False:
+            raise TypeError(f'Error (Zoom): Expected int, received {type(zoom).__name__}')
+
+        if type(zoom) == bool:
             raise TypeError(f'Error (Zoom): Expected int, received {type(zoom).__name__}')
 
         if zoom < 0 or zoom >=20:
@@ -96,8 +102,10 @@ class Data:
             self.validate(self, TLLat, TLLon, BLLat, BLLon, zoom, x2)
         except ValueError as error:
             print(error)
+            exit()
         except TypeError as error:
             print(error)
+            exit()
         
         print('Data provided is valid')
 
@@ -158,7 +166,7 @@ class Data:
             
         # creates full image so that tiles can be pasted into it
 
-        fullImage = self.create_image(self)
+        self.fullImage = self.create_image(self)
 
         # now we need to make the api call to retrieve the data
 
@@ -170,14 +178,14 @@ class Data:
 
             image = self.api_call(self, x, y)
 
-            fullImage.paste(image, (pngx, pngy))
-
-        fullImage.save('result.png', 'png')
+            self.fullImage.paste(image, (pngx, pngy))
 
         # next, we need to calculate the edges of the requested area (up until now the request was just tiles). this allows us to crop to the correct size
 
         trim1 = slippymap_funcs.deg2numFloat(self.TLLat, self.TLLon, zoom)
         trim2 = slippymap_funcs.deg2numFloat(self.BLLat, self.BLLon, zoom)
+
+        # calculates pixel coordinates for left, top, right, bottom of requested coordinates
 
         left = round(((trim1[0] - self.origin[0]) * 512))
         top = round(((trim1[1] - self.origin[1]) * 512))
@@ -185,5 +193,8 @@ class Data:
         right = round(((trim2[0] - self.limit[0]) * 512) + ((self.tilesWidth - 1) * 512))
         bottom = round(((trim2[1] - self.limit[1]) * 512)+ ((self.tilesHeight - 1) * 512))
 
-        fullImage = fullImage.crop((left, top, right, bottom))
-        fullImage.save('result.png', 'png')
+        self.fullImage = self.fullImage.crop((left, top, right, bottom))
+
+        self.fullImage.save('result.png', 'png')
+
+        return(self.fullImage)
