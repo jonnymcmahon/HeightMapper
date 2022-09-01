@@ -4,7 +4,7 @@ import math
 from PIL import Image
 from dotenv import load_dotenv
 import os
-import slippy_map_tilenames_funcs
+import slippymap_funcs
 from io import BytesIO
 
 class Data:
@@ -115,8 +115,8 @@ class Data:
 
         #calculate size of area in tiles
 
-        self.origin = slippy_map_tilenames_funcs.deg2num(self.TLLat, self.TLLon, self.zoom)
-        self.limit = slippy_map_tilenames_funcs.deg2num(self.BLLat, self.BLLon, self.zoom)
+        self.origin = slippymap_funcs.deg2num(self.TLLat, self.TLLon, self.zoom)
+        self.limit = slippymap_funcs.deg2num(self.BLLat, self.BLLon, self.zoom)
 
         #calculates the height / width of the requested area in tiles
 
@@ -176,8 +176,8 @@ class Data:
 
         # next, we need to calculate the edges of the requested area (up until now the request was just tiles). this allows us to crop to the correct size
 
-        trim1 = slippy_map_tilenames_funcs.deg2numFloat(self.TLLat, self.TLLon, zoom)
-        trim2 = slippy_map_tilenames_funcs.deg2numFloat(self.BLLat, self.BLLon, zoom)
+        trim1 = slippymap_funcs.deg2numFloat(self.TLLat, self.TLLon, zoom)
+        trim2 = slippymap_funcs.deg2numFloat(self.BLLat, self.BLLon, zoom)
 
         left = round(((trim1[0] - self.origin[0]) * 512))
         top = round(((trim1[1] - self.origin[1]) * 512))
