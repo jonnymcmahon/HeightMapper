@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import slippymap_funcs
 from io import BytesIO
+import json
 
 class Data:
 
@@ -24,7 +25,7 @@ class Data:
         image = requests.get(url)
 
         if image.status_code == 404:
-            im = self.seaTile()
+            im = self.seaTile(self)
         else:
             im = Image.open(BytesIO(image.content))
 
@@ -71,7 +72,7 @@ class Data:
         if TLLon >= BLLon:
             raise ValueError('Error: Top left longitude must be west of bottom left longitude')
         
-        #checking if zoom is int and then if it is in accepted range (>= 0 and <= 20) as data over zoom level of 20 is useless for purpose of script
+        #checking if zoom is int and then if it is in accepted range (>= 0 and <= 15) as data over zoom level of 15 is useless for purpose of script
 
         if isinstance(zoom, int) == False:
             raise TypeError(f'Error (Zoom): Expected int, received {type(zoom).__name__}')
@@ -79,8 +80,8 @@ class Data:
         if type(zoom) == bool:
             raise TypeError(f'Error (Zoom): Expected int, received {type(zoom).__name__}')
 
-        if zoom < 0 or zoom >=20:
-            raise ValueError(f'Error: Zoom level should be between 0 and 20 (Given: {zoom})')
+        if zoom < 0 or zoom >= 15:
+            raise ValueError(f'Error: Zoom level should be between 0 and 15 (Given: {zoom})')
 
         #checks if x2 argument is bool (default = false, can be set to true)
 
@@ -171,6 +172,7 @@ class Data:
         # now we need to make the api call to retrieve the data
 
         for key, tile in self.tiles.items():
+
             x = tile[0]
             y = tile[1]
             pngx = key[0] * self.tileSize

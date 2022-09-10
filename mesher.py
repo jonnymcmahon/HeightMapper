@@ -3,7 +3,7 @@ from PIL import Image
 import openmesh as om
 
 # data = Data.generate_data(Data, 59.45441906729533, -12.254052707296019, 49.678121214543395, 2.6842068985081435, 5, True)
-data = Data.generate_data(Data, -6.063849561744894, 105.3455101379571, -6.191662954862644, 105.50989364335919, 13, True)
+data = Data.generate_data(Data, 59.40020139650337, -10.800999576062194, 49.89100481311484, 2.4105610227107817, 5, True)
 
 # converts image to pixel values for elevation calculation
 px = data.convert('RGB')
@@ -28,7 +28,7 @@ verts = { (0,0) : 0}
 x = 0
 y = 0
 
-zScaleFactor = 1
+zScaleFactor = 10
 
 # while loop to create all verts
 while pixelx < imageX:
@@ -38,6 +38,9 @@ while pixelx < imageX:
         r, g, b = px.getpixel((pixelx, pixely))
 
         elev = ((-10000 + ((r * 256 * 256 + g * 256 + b) * 0.1)) / Data.pxDist) * zScaleFactor
+
+        if elev > 0:
+            elev = elev + 1
 
         verts[(x, y)] = mesh.add_vertex([x, y, elev])
 
