@@ -1,0 +1,7 @@
+cmake==3.27.7
+wheel==0.41.3
+openmesh==1.2.1
+Pillow==10.1.0
+python-dotenv==1.0.0
+ratelimit==2.2.1
+requests==2.31.0
