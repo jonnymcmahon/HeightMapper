@@ -1,4 +1,4 @@
-from ratelimiter import RateLimiter
+from ratelimit import limits
 import requests
 import math
 from PIL import Image
@@ -7,8 +7,42 @@ import os
 import slippymap_funcs
 from io import BytesIO
 import json
+import argparse
 
-class Data:
+def parse_arguments():
+
+    arguments = {}
+
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--tl', help='top left coordinates')
+    parser.add_argument('--br', help='bottom left coorindates')
+    parser.add_argument('--zscale', default=1, help='multiplier for z axis, default 1')
+    parser.add_argument('--zoom', default=10, help='zoom level based on size of area, default 10')
+
+    args = parser.parse_args()
+
+    if ',' not in args.tl or ',' not in args.br:
+        print('Co-ordinates format should be lat,lon . Format not recognised')
+
+    if not args.tl or not args.br:
+        print('Missing top left coords (--tl), or bottom right coords (--br)')
+        exit()
+
+    comma_index = args.tl.index(',')
+    arguments['tl_lat'] = float(args.tl[0 : comma_index])
+    arguments['tl_lon'] = float(args.tl[(comma_index + 1): len(args.tl)])
+
+    comma_index = args.br.index(',')
+    arguments['br_lat'] = float(args.br[0 : comma_index])
+    arguments['br_lon'] = float(args.br[(comma_index + 1): len(args.tl)])
+
+    arguments['z_scale_factor'] = float(args.zscale)
+    arguments['zoom'] = int(args.zoom)
+
+    return arguments
+
+class Mesh:
 
     def __init__(self):
         load_dotenv()
@@ -17,7 +51,7 @@ class Data:
         self.tileset_id = "mapbox.mapbox-terrain-dem-v1"
 
 
-    @RateLimiter(max_calls=30, period=10)
+    @limits(calls=30, period=10)
     def api_call(self, x, y):
 
         url = f"https://api.mapbox.com/v4/{self.tileset_id}/{self.zoom}/{x}/{y}@2x.{self.format}?access_token={self.ACCESS_TOKEN}"
@@ -46,31 +80,31 @@ class Data:
         # circumference of the earth at the equator in metres
         C = 40075016.686 
 
-        avgLat = (self.TLLat + self.BLLat) / 2
+        avgLat = (self.TLLat + self.BRLat) / 2
         self.pxDist = (C * math.cos(math.radians(avgLat)) / (2**self.zoom)) / self.tileSize
 
         fullImage = Image.new('RGB', ((self.tilesWidth*self.tileSize), (self.tilesHeight*self.tileSize)), (250,250,250))
 
         return(fullImage)
 
-    def validate(self, TLLat: float, TLLon: float, BLLat: float, BLLon: float, zoom: int, x2=False):
+    def validate(self, TLLat: float, TLLon: float, BRLat: float, BRLon: float, zoom: int, x2=False):
 
         # TODO add exception to this data val for longitude that crosses international dateline
         # TODO check mapbox API latitude extremes and add validation for this
 
         # coordinate data validation, checks correct data type has been provided, and checks top left and bottom right coordinates align
 
-        coords = {"Top Left Lat": TLLat, "Top Left Lon": TLLon, "Bottom Left Lat": BLLat, "Bottom Left Lon": BLLon}
+        coords = {"Top Left Lat": TLLat, "Top Left Lon": TLLon, "Bottom Right Lat": BRLat, "Bottom Right Lon": BRLon}
 
         for name, coord in coords.items():
             if isinstance(coord, (int, float)) == False:
                 raise TypeError(f'Error ({name}): Expected int or float, received {type(coord).__name__}')
 
-        if TLLat <= BLLat:
-            raise ValueError('Error: Top left latitude must be north of bottom left latitude')
+        if TLLat <= BRLat:
+            raise ValueError('Error: Top left latitude must be north of bottom right latitude')
 
-        if TLLon >= BLLon:
-            raise ValueError('Error: Top left longitude must be west of bottom left longitude')
+        if TLLon >= BRLon:
+            raise ValueError('Error: Top left longitude must be west of bottom right longitude')
         
         #checking if zoom is int and then if it is in accepted range (>= 0 and <= 15) as data over zoom level of 15 is useless for purpose of script
 
@@ -90,7 +124,7 @@ class Data:
 
 
     @staticmethod
-    def generate_data(self, TLLat: float, TLLon: float, BLLat: float, BLLon: float, zoom: int, x2=False):
+    def generate_data(self, TLLat: float, TLLon: float, BRLat: float, BRLon: float, zoom: int, x2=False):
 
         #runs init in case there is no instance of class
 
@@ -100,7 +134,7 @@ class Data:
 
         print('Validating data')
         try:
-            self.validate(self, TLLat, TLLon, BLLat, BLLon, zoom, x2)
+            self.validate(self, TLLat, TLLon, BRLat, BRLon, zoom, x2)
         except ValueError as error:
             print(error)
             exit()
@@ -114,8 +148,8 @@ class Data:
 
         self.TLLat = TLLat
         self.TLLon = TLLon
-        self.BLLat = BLLat
-        self.BLLon = BLLon
+        self.BRLat = BRLat
+        self.BRLon = BRLon
         self.zoom = zoom
 
         #setting tileSize (in pixels) to the specified value
@@ -125,7 +159,7 @@ class Data:
         #calculate size of area in tiles
 
         self.origin = slippymap_funcs.deg2num(self.TLLat, self.TLLon, self.zoom)
-        self.limit = slippymap_funcs.deg2num(self.BLLat, self.BLLon, self.zoom)
+        self.limit = slippymap_funcs.deg2num(self.BRLat, self.BRLon, self.zoom)
 
         #calculates the height / width of the requested area in tiles
 
@@ -185,7 +219,7 @@ class Data:
         # next, we need to calculate the edges of the requested area (up until now the request was just tiles). this allows us to crop to the correct size
 
         trim1 = slippymap_funcs.deg2numFloat(self.TLLat, self.TLLon, zoom)
-        trim2 = slippymap_funcs.deg2numFloat(self.BLLat, self.BLLon, zoom)
+        trim2 = slippymap_funcs.deg2numFloat(self.BRLat, self.BRLon, zoom)
 
         # calculates pixel coordinates for left, top, right, bottom of requested coordinates
 
