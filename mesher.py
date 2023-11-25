@@ -71,3 +71,5 @@ while x < imageX:
     y = 0
 
 om.write_mesh('result.obj', mesh)
+
+print('Success! See result.obj for output')
